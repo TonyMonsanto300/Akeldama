@@ -8,7 +8,6 @@ public class NPCController : MonoBehaviour
     private NPCMovement movement;
     private NPCCombat combat;
     private Animator animator;
-
     private CharacterForm form;
 
     private bool engaged = false;
@@ -26,12 +25,22 @@ public class NPCController : MonoBehaviour
 
     void Update()
     {
-        ScanForTargets();
+        HandleTargeting();
+        HandleEngagement();
         UpdateState();
     }
 
-    private void ScanForTargets()
+    private void HandleTargeting()
     {
+        // Only Hostile NPCs should scan/pursue
+        if (form.alignment != CharacterForm.Alignment.Hostile)
+        {
+            form.Target = null;
+            engaged = false;
+            movement.target = null;
+            return;
+        }
+
         Collider[] hits = Physics.OverlapSphere(transform.position, form.ScanRange);
         float nearest = float.MaxValue;
         CharacterForm closest = null;
@@ -40,7 +49,11 @@ public class NPCController : MonoBehaviour
         {
             CharacterForm cf = hit.GetComponent<CharacterForm>();
             if (cf == null || cf == form) continue;
-            if (cf.alignment == form.alignment) continue;
+
+            // Only ignore allies/defenders, not Neutral/Peaceful
+            if (cf.alignment == CharacterForm.Alignment.Ally ||
+                cf.alignment == CharacterForm.Alignment.Defending)
+                continue;
 
             float dist = Vector3.Distance(transform.position, cf.transform.position);
             if (dist < nearest)
@@ -64,11 +77,25 @@ public class NPCController : MonoBehaviour
         }
     }
 
+    private void HandleEngagement()
+    {
+        if (form.Target == null)
+            return;
+
+        float dist = Vector3.Distance(transform.position, form.Target.transform.position);
+
+        // If movement has placed us in attack range, request attack
+        if (dist <= combat.AttackDistance)
+        {
+            combat.PlayerAttack();
+        }
+    }
+
     private void UpdateState()
     {
         bool moving = movement.IsMoving;
         bool attacking = combat.IsAttacking;
-        bool engaged = combat.Engaged;
+        bool engaged = this.engaged;
 
         string nextAnim;
 

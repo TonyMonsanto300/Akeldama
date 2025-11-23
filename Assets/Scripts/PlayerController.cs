@@ -18,12 +18,18 @@ public class PlayerController : MonoBehaviour
 
     [Header("UI")]
     public Text healthText; // Assign in inspector
+    public Text energyText; // assign in inspector
 
     private CharacterController avatarController;
     private CharacterGravity gravityComponent;
     private CharacterForm characterForm;
     private Animator animator;
     private NPCCombat npcCombat;
+
+    private bool isSprinting = false;
+    private float sprintMultiplier = 1.75f;
+    private float sprintEnergyDrain = 12f; // private tuning
+    private float energyRecoveryRate = 0.5f;
 
     private Transform avatarTransform;
     private Transform cameraTransform;
@@ -71,6 +77,7 @@ public class PlayerController : MonoBehaviour
         avatarController = avatar.GetComponent<CharacterController>();
         gravityComponent = avatar.GetComponent<CharacterGravity>();
         characterForm = avatar.GetComponent<CharacterForm>();
+        characterForm.SetIsPlayer(true);
         animator = avatar.GetComponent<Animator>();
         npcCombat = avatar.GetComponent<NPCCombat>();
 
@@ -128,14 +135,59 @@ public class PlayerController : MonoBehaviour
         if (input.magnitude == 0f)
         {
             lastMove = Vector3.zero;
+            isSprinting = false;
+
+            if (characterForm != null)
+            {
+                characterForm.CurrentEnergy += (sprintEnergyDrain * energyRecoveryRate) * Time.deltaTime;
+                if (characterForm.CurrentEnergy > characterForm.MaxEnergy)
+                    characterForm.CurrentEnergy = characterForm.MaxEnergy;
+            }
+
             return;
         }
 
-        // ✅ Flip the forward/backward direction to match camera flip
-        Vector3 move = avatarTransform.TransformDirection(new Vector3(-input.x, 0f, -input.z)) * moveSpeed;
+        bool grounded = gravityComponent != null && gravityComponent.IsGrounded();
+
+        if (grounded)
+        {
+            bool wantsSprint =
+                Input.GetKey(KeyCode.LeftShift) &&
+                characterForm != null &&
+                characterForm.CurrentEnergy > 0f;
+
+            isSprinting = wantsSprint;
+        }
+        else
+        {
+            isSprinting = false;
+        }
+
+        float speed = moveSpeed;
+
+        if (isSprinting && characterForm != null)
+        {
+            speed *= sprintMultiplier;
+
+            characterForm.CurrentEnergy -= sprintEnergyDrain * Time.deltaTime;
+            if (characterForm.CurrentEnergy <= 0f)
+            {
+                characterForm.CurrentEnergy = 0f;
+                isSprinting = false;
+            }
+        }
+        else if (characterForm != null)
+        {
+            characterForm.CurrentEnergy += (sprintEnergyDrain * energyRecoveryRate) * Time.deltaTime;
+            if (characterForm.CurrentEnergy > characterForm.MaxEnergy)
+                characterForm.CurrentEnergy = characterForm.MaxEnergy;
+        }
+
+        Vector3 move = avatarTransform.TransformDirection(new Vector3(-input.x, 0f, -input.z)) * speed;
         avatarController.Move(move * Time.deltaTime);
         lastMove = input;
     }
+
 
     void HandleJumpInput()
     {
@@ -185,19 +237,26 @@ public class PlayerController : MonoBehaviour
 
     void UpdateHealthText()
     {
-        if (healthText == null) return;
+        if (healthText != null && characterForm != null)
+        {
+            float current = characterForm.CurrentHP;
+            float max = characterForm.MaxHP;
+            healthText.text = $"{current}/{max}";
+            float percent = max > 0f ? current / max : 0f;
+            healthText.color = percent > 0.5f ? Color.green :
+                               percent > 0.25f ? Color.yellow :
+                                                 Color.red;
+        }
 
-        float current = characterForm ? characterForm.CurrentHP : 0f;
-        float max = characterForm ? characterForm.MaxHP : 0f;
-
-        healthText.text = $"{current}/{max}";
-
-        float percent = max > 0f ? current / max : 0f;
-        if (percent > 0.5f)
-            healthText.color = Color.green;
-        else if (percent > 0.25f)
-            healthText.color = Color.yellow;
-        else
-            healthText.color = Color.red;
+        if (energyText != null && characterForm != null)
+        {
+            float current = characterForm.CurrentEnergy;
+            float max = characterForm.MaxEnergy;
+            energyText.text = $"{(int)current}/{(int)max}";
+            float percent = max > 0f ? current / max : 0f;
+            energyText.color = percent > 0.5f ? Color.cyan :
+                               percent > 0.25f ? Color.yellow :
+                                                 Color.red;
+        }
     }
 }
