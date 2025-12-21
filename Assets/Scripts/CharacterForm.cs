@@ -3,14 +3,25 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 
-public enum ClassType { Warrior, Mage, Rogue, Cleric, Ranger, Paladin }
+public enum ClassType { Warrior, Magician, Scout, Monk, Page, Cleric, Rogue, Nomad, Medium, Tamer, Druid, Performer }
+
+public class StatBlock {
+    int strength;
+    int mind;
+    int agility;
+    int spirit;
+    int charisma;
+}
 
 public class CharacterClass {
     string name;
+    ClassType classType;
 
-    int maxHP;
-    int maxEP;
-    int maxMP;
+    int baseHP;
+    int baseEP;
+    int baseMP;
+
+    StatBlock baseStats;
 }
 
 public class CharacterForm : MonoBehaviour
