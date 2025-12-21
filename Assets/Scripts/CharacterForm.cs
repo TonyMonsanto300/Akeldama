@@ -3,8 +3,20 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 
+public enum ClassType { Warrior, Mage, Rogue, Cleric, Ranger, Paladin }
+
+public class CharacterClass {
+    string name;
+
+    int maxHP;
+    int maxEP;
+    int maxMP;
+}
+
 public class CharacterForm : MonoBehaviour
 {
+
+    //Vitals
     public string DisplayName = "Unknown";
     public float MaxHP = 100f;
     public float CurrentHP = 100f;
@@ -13,14 +25,17 @@ public class CharacterForm : MonoBehaviour
     public int Level = 1;
     public int MoveSpeed = 1;
 
+    // Alignment Types
+    public enum Alignment { Hostile, Peaceful, Neutral, Special, Ally, Defending }
+    public Alignment alignment = Alignment.Neutral;
+
+    // Damage Text Objects
     public GameObject DamageTextPrefab;
     public float floatUpDistance = 1f;
     public float floatDuration = 1f;
     public float cameraOffsetDistance = 2f;
 
-    public enum Alignment { Hostile, Peaceful, Neutral, Special, Ally, Defending }
-    public Alignment alignment = Alignment.Neutral;
-
+    // Targetting
     [HideInInspector] public CharacterForm Target;
     public float ScanRange = 10f;
 
