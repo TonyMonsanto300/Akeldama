@@ -107,9 +107,9 @@ public class PlayerController : MonoBehaviour
 
         // Parent and position the camera as usual
         cameraTransform.SetParent(modelTransform, worldPositionStays: false);
-        cameraTransform.position = headTransform.position + new Vector3(0f, 0.35f, 0f);
+        cameraTransform.position = headTransform.position + new Vector3(0f, 0.20f, 0f);
 
-        cameraTransform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+        cameraTransform.localRotation = Quaternion.identity;
     }
 
     void HandleLook()
@@ -122,7 +122,7 @@ public class PlayerController : MonoBehaviour
 
         pitch -= mouseY;
         pitch = Mathf.Clamp(pitch, -pitchClamp, pitchClamp);
-        cameraTransform.localEulerAngles = new Vector3(pitch, 180f, 0f); // keep the 180° facing
+        cameraTransform.localEulerAngles = new Vector3(pitch, 0f, 0f);
     }
 
     void HandleMovement()

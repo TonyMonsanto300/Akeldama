@@ -3,8 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 
-public enum ClassType { Warrior, Magician, Scout, Monk, Page, Cleric, Rogue, Nomad, Medium, Tamer, Druid, Performer }
-
 public class StatBlock {
     int strength;
     int mind;
@@ -15,7 +13,6 @@ public class StatBlock {
 
 public class CharacterClass {
     string name;
-    ClassType classType;
 
     int baseHP;
     int baseEP;
@@ -24,7 +21,7 @@ public class CharacterClass {
     StatBlock baseStats;
 }
 
-public class CharacterForm : MonoBehaviour
+public class CharacterForm : MonoBehaviour //TODO: Split into CharacterForm and CharacterState
 {
 
     //Vitals
@@ -37,21 +34,23 @@ public class CharacterForm : MonoBehaviour
     public int MoveSpeed = 1;
 
     // Alignment Types
-    public enum Alignment { Hostile, Peaceful, Neutral, Special, Ally, Defending }
+    //public enum Alignment { Lawful, Neutral, Evil, Chaotic }
+    public enum Alignment { Peaceful, Neutral, Hostile, Ally, Defending, Special }
     public Alignment alignment = Alignment.Neutral;
 
-    // Damage Text Objects
+    // Damage Text Objects / Configuration
     public GameObject DamageTextPrefab;
-    public float floatUpDistance = 1f;
-    public float floatDuration = 1f;
-    public float cameraOffsetDistance = 2f;
+    public float floatUpDistance = 1f; // Move to config
+    public float floatDuration = 1f; // Move to config
+    public float cameraOffsetDistance = 2f; // Move to config
 
     // Targetting
     [HideInInspector] public CharacterForm Target;
     public float ScanRange = 10f;
 
-    public Material flashRedMaterial;
 
+    //TODO: Move to CombatantScript
+    public Material flashRedMaterial;
     private bool isFlashingRed = false;
     private Coroutine knockbackRoutine;
 
@@ -59,7 +58,7 @@ public class CharacterForm : MonoBehaviour
 
     public void SetIsPlayer(bool value)
     {
-        isPlayer = value;
+        isPlayer = value; // Move to a PlayerCharacterManager
     }
 
     IEnumerator DeathSequence(float amount)
@@ -129,6 +128,7 @@ public class CharacterForm : MonoBehaviour
         return false;
     }
 
+    //TODO: Move to CombatantScript
     public void FlashRed(float duration = 0.05f)
     {
         if (flashRedMaterial == null) return;
@@ -136,6 +136,7 @@ public class CharacterForm : MonoBehaviour
         StartCoroutine(FlashRedRoutine(duration));
     }
 
+    //TODO: Move to CombatantScript
     private IEnumerator FlashRedRoutine(float duration)
     {
         isFlashingRed = true;
@@ -171,6 +172,7 @@ public class CharacterForm : MonoBehaviour
         isFlashingRed = false;
     }
 
+    //TODO: Move to CombatantScript
     public void ApplyKnockback(Vector3 direction, float force)
     {
         if (knockbackRoutine != null)
@@ -179,6 +181,7 @@ public class CharacterForm : MonoBehaviour
         knockbackRoutine = StartCoroutine(KnockbackRoutine(direction, force));
     }
 
+    //TODO: Move to CombatantScript
     private IEnumerator KnockbackRoutine(Vector3 direction, float force)
     {
         var cc = GetComponent<CharacterController>();

@@ -39,18 +39,20 @@ public class NPCAvatar : MonoBehaviour {
     public enum HairStyle {
         Short,
         Medium,
-        Long
+        Long,
+        Test
     }
 
     public enum ClothingColor {
-        Blue,
-        Green,
-        Draconic
+        Guardian,
+        Fencer,
+        Priest,
+        Raider
     }
 
     public Race race = Race.Human;
     public HairStyle hairStyle = HairStyle.Short;
-    public ClothingColor clothingColor = ClothingColor.Blue;
+    public ClothingColor clothingColor = ClothingColor.Guardian;
 
     Transform model;
     Transform upperBody;
@@ -80,25 +82,77 @@ public class NPCAvatar : MonoBehaviour {
     }
 
     void ApplyBodyMaterial() {
-        string matName =
-            (clothingColor == ClothingColor.Draconic)
-                ? "Material_Clothing_Draconic_Green"
-                : $"Material_Clothing_Basic_{clothingColor}";
+        // Pick the right texture name based on ClothingColor
+        string texName;
+        switch (clothingColor) {
+            case ClothingColor.Guardian:
+                texName = "texture_clothing_guardian";
+                break;
+            case ClothingColor.Fencer:
+                texName = "texture_clothing_fencer";
+                break;
+            case ClothingColor.Priest:
+                texName = "texture_clothing_priest";
+                break;
+            case ClothingColor.Raider:
+                texName = "texture_clothing_raider";
+                break;
+            default:
+                texName = "texture_clothing_guardian"; // fallback
+                break;
+        }
 
-        Material bodyMat = Resources.Load<Material>($"clothing/{matName}");
-        if (bodyMat == null) return;
+        Texture2D bodyTex = Resources.Load<Texture2D>($"clothing/{texName}");
+        if (bodyTex == null) {
+            Debug.LogWarning($"NPCAvatar: Clothing texture not found at clothing/{texName}");
+        } else {
+            if (torso != null)
+                SetMainTextureExcludeWeapon(torso, bodyTex);
+            if (lowerBody != null)
+                SetMainTextureExcludeWeapon(lowerBody, bodyTex);
+        }
 
-        if (torso != null)
-            ApplyToHierarchyExcludeWeapon(torso, bodyMat);
-        if (lowerBody != null)
-            ApplyToHierarchyExcludeWeapon(lowerBody, bodyMat);
-
+        // Still apply skin fill color into the same material via MPB
         Color fillColor = AvatarPaletteRepo.GetPalette(race).skin;
+        Color fillColor2 = AvatarPaletteRepo.GetPalette(race).skin2;
 
         if (torso != null)
-            SetFillColorExcludeWeapon(torso, fillColor);
+            SetFillColorExcludeWeapon(torso, fillColor, fillColor2);
         if (lowerBody != null)
-            SetFillColorExcludeWeapon(lowerBody, fillColor);
+            SetFillColorExcludeWeapon(lowerBody, fillColor, fillColor2);
+    }
+
+    // Uses MaterialPropertyBlock to override _MainTex without swapping materials
+    void SetMainTextureExcludeWeapon(Transform t, Texture tex) {
+        string clean = CleanName(t.name);
+        if (clean == "Weapon" || clean == "Accessories")
+            return;
+
+        Renderer r = t.GetComponent<Renderer>();
+        if (r != null) {
+            r.GetPropertyBlock(_mpb);
+            _mpb.SetTexture("_MainTex", tex);
+            r.SetPropertyBlock(_mpb);
+        }
+
+        foreach (Transform child in t)
+            SetMainTextureExcludeWeapon(child, tex);
+    }
+
+
+    string getHairTexture(Race race, HairStyle hairStyle) {
+        //if( race == Race.Dwarf ) {
+        //    return "mask_head_dwarf_longhair";
+        //} else {
+        //    switch(hairStyle) {
+        //        case HairStyle.Short: return "mask_head_base_shorthair";
+        //        case HairStyle.Medium: return "mask_head_base_medhair";
+        //        case HairStyle.Long: return "mask_head_base_longhair";
+        //        case HairStyle.Test: return "texture_head_longhair_mask";
+        //        default: return null;
+        //    }
+        //}
+        return "mask_head_base_longhair";
     }
 
     void ApplyHairMaterial() {
@@ -106,16 +160,7 @@ public class NPCAvatar : MonoBehaviour {
 
         var p = AvatarPaletteRepo.GetPalette(race);
 
-        string texName = null;
-        if (race == Race.Dwarf) {
-            texName = "mask_head_dwarf_longhair";
-        } else {
-            switch (hairStyle) {
-                case HairStyle.Short: texName = "mask_head_base_shorthair"; break;
-                case HairStyle.Medium: texName = "mask_head_base_medhair"; break;
-                case HairStyle.Long: texName = "mask_head_base_longhair"; break;
-            }
-        }
+        string texName = getHairTexture(race, hairStyle);
 
         _headBaseTex = string.IsNullOrEmpty(texName)
             ? null
@@ -156,13 +201,16 @@ public class NPCAvatar : MonoBehaviour {
         Transform hornsCelt = FindRecursive(head, "horns_celt");
         Transform hornsDragonman = FindRecursive(head, "horns_dragonman");
         Transform beardDwarf = FindRecursive(head, "beard_dwarf");
+        Transform helmetRaider = FindRecursive(head, "helmet_raider");
 
+        // Clear old accessories
         if (earsElf != null) Destroy(earsElf.gameObject);
         if (earsDwarf != null) Destroy(earsDwarf.gameObject);
         if (earsCelt != null) Destroy(earsCelt.gameObject);
         if (hornsCelt != null) Destroy(hornsCelt.gameObject);
         if (hornsDragonman != null) Destroy(hornsDragonman.gameObject);
         if (beardDwarf != null) Destroy(beardDwarf.gameObject);
+        if (helmetRaider != null) Destroy(helmetRaider.gameObject);
 
         bool usesElfEars = (race == Race.ElfM || race == Race.ElfD || race == Race.ElfA);
         bool usesDwarf = (race == Race.Dwarf);
@@ -193,29 +241,17 @@ public class NPCAvatar : MonoBehaviour {
                 Instantiate(prefab, head);
         }
 
-        // Now that we've spawned/removed head parts, reapply palette to the whole head.
-        ApplyHeadPaletteToAllHeadParts();
-
-        if (upperBody != null) {
-            Transform accessories = upperBody.Find("Accessories");
-            if (accessories == null)
-                accessories = upperBody;
-
-            Transform redCloak = FindRecursive(accessories, "red_cloak");
-
-            if (clothingColor == ClothingColor.Draconic) {
-                if (redCloak == null) {
-                    GameObject cloakPrefab = Resources.Load<GameObject>("clothing/accessories/red_cloak");
-                    if (cloakPrefab != null) {
-                        GameObject cloakInstance = Instantiate(cloakPrefab, accessories);
-                        cloakInstance.name = "red_cloak";
-                    }
-                }
-            } else {
-                if (redCloak != null)
-                    Destroy(redCloak.gameObject);
+        // Raider helmet tied to ClothingColor
+        if (clothingColor == ClothingColor.Raider) {
+            GameObject prefab = Resources.Load<GameObject>("helmet/helmet_raider");
+            if (prefab != null) {
+                GameObject inst = Instantiate(prefab, head);
+                inst.name = "helmet_raider"; // avoid " (Clone)" name issues with FindRecursive
             }
         }
+
+        // Reapply palette so new parts get colored
+        ApplyHeadPaletteToAllHeadParts();
     }
 
     Transform FindRecursive(Transform root, string name) {
@@ -240,20 +276,26 @@ public class NPCAvatar : MonoBehaviour {
             ApplyToHierarchyExcludeWeapon(child, mat);
     }
 
-    void SetFillColorExcludeWeapon(Transform t, Color c) {
+    void SetFillColorExcludeWeapon(Transform t, Color c1, Color c2) {
         string clean = CleanName(t.name);
         if (clean == "Weapon" || clean == "Accessories")
             return;
 
         Renderer r = t.GetComponent<Renderer>();
-        if (r != null && r.sharedMaterial != null && r.sharedMaterial.HasProperty("_FillColor")) {
+        if (r != null && r.sharedMaterial != null) {
             r.GetPropertyBlock(_mpb);
-            _mpb.SetColor("_FillColor", c);
+
+            if (r.sharedMaterial.HasProperty("_FillColor"))
+                _mpb.SetColor("_FillColor", c1);
+
+            if (r.sharedMaterial.HasProperty("_FillColor2"))
+                _mpb.SetColor("_FillColor2", c2);
+
             r.SetPropertyBlock(_mpb);
         }
 
         foreach (Transform child in t)
-            SetFillColorExcludeWeapon(child, c);
+            SetFillColorExcludeWeapon(child, c1, c2);
     }
 
     string CleanName(string n) {

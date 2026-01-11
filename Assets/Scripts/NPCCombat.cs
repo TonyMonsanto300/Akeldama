@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterForm))]
@@ -34,6 +35,8 @@ public class NPCCombat : MonoBehaviour
 
     private enum CombatState { Idle, CombatIdle, Attacking }
     private CombatState state = CombatState.Idle;
+
+    private HashSet<CharacterForm> hitTargetsThisAttack = new HashSet<CharacterForm>();
 
     void Start()
     {
@@ -89,14 +92,15 @@ public class NPCCombat : MonoBehaviour
         }
     }
 
-    private IEnumerator Attack()
-    {
+    private IEnumerator Attack() {
         attacking = true;
         state = CombatState.Attacking;
 
+        // NEW: reset per-swing hit tracking
+        hitTargetsThisAttack.Clear();
+
         float elapsed = 0f;
-        while (elapsed < attackDuration)
-        {
+        while (elapsed < attackDuration) {
             elapsed += Time.deltaTime;
             if (form.Target != null)
                 FaceTargetSmoothly();
@@ -130,30 +134,36 @@ public class NPCCombat : MonoBehaviour
         }
     }
 
-    private bool IsAttackActiveWindow()
-    {
+    private bool IsAttackActiveWindow() {
         AnimatorStateInfo info = animator.GetCurrentAnimatorStateInfo(0);
         if (!info.IsName("Basic Attack Animation")) return false;
 
         float t = info.normalizedTime % 1f;
-        return t >= 0.35f && t <= 0.67f;
+        return t >= 0.10f && t <= 0.80f;
     }
 
-    public void ApplyAttack(CharacterForm target)
-    {
-        if (recentlyAppliedAttack) return;
+    public void ApplyAttack(CharacterForm target) {
+        // Only allow hits during an active attack
+        if (!attacking) return;
         if (target == null || target == form) return;
-        if (!IsAttackActiveWindow()) return;
 
-        StartCoroutine(ApplyAttackCooldownRoutine());
+        //if (!IsAttackActiveWindow()) return;
 
+        // Already hit this target during this swing? Ignore.
+        if (hitTargetsThisAttack.Contains(target))
+            return;
+
+        // Mark as hit for this attack
+        hitTargetsThisAttack.Add(target);
+
+        // Apply damage
         target.TakeDamage(AttackDamage, form);
 
-        if (target.CurrentHP <= 0)
-        {
+        if (target.CurrentHP <= 0) {
             target.CurrentHP = 0;
         }
 
+        // Apply knockback
         Vector3 dir = (target.transform.position - transform.position).normalized;
         target.ApplyKnockback(dir, AttackForce);
     }
