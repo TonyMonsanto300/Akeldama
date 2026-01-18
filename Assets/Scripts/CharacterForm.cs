@@ -3,26 +3,18 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 
-public class StatBlock {
-    int strength;
-    int mind;
-    int agility;
-    int spirit;
-    int charisma;
-}
-
-public class CharacterClass {
-    string name;
-
-    int baseHP;
-    int baseEP;
-    int baseMP;
-
-    StatBlock baseStats;
-}
-
 public class CharacterForm : MonoBehaviour //TODO: Split into CharacterForm and CharacterState
 {
+    [Header("Identity")]
+    public RaceEnum RaceChoice = RaceEnum.Human;
+    public ClassEnum ClassChoice = ClassEnum.GUARDIAN;
+
+    // Resolved data (what NPCAvatar will read)
+    [HideInInspector]
+    public CharacterRace? Race { get; private set; }
+    [HideInInspector]
+    public CharacterClass? Class { get; private set; }
+
 
     //Vitals
     public string DisplayName = "Unknown";
@@ -61,6 +53,25 @@ public class CharacterForm : MonoBehaviour //TODO: Split into CharacterForm and 
         isPlayer = value; // Move to a PlayerCharacterManager
     }
 
+    void Awake() {
+        ResolveIdentity();
+    }
+
+    public void ResolveIdentity() {
+        Race = (RaceChoice == RaceEnum.Random)
+            ? CharacterRaceStore.GetRandomRace()
+            : CharacterRaceStore.GetRace(RaceChoice);
+
+        Class = CharacterClassStore.GetCharacterClass(ClassChoice);
+
+        if (Race == null)
+            Debug.LogError($"CharacterForm: Failed to resolve race from {RaceChoice}", this);
+        if (Class == null)
+            Debug.LogError($"CharacterForm: Failed to resolve class from {ClassChoice}", this);
+    }
+
+    // TODO: Move to CombatantScript
+
     IEnumerator DeathSequence(float amount)
     {
         Transform model = transform.Find("Model");
@@ -79,6 +90,8 @@ public class CharacterForm : MonoBehaviour //TODO: Split into CharacterForm and 
 
         Die();
     }
+
+    // TODO: Move to CombatantScript
 
     public void TakeDamage(float amount, CharacterForm attacker)
     {
@@ -201,6 +214,7 @@ public class CharacterForm : MonoBehaviour //TODO: Split into CharacterForm and 
         }
     }
 
+    // TODO: Move out of MonoScripts entirely, probably to a UI Manager. Currently it freezes if the attached object is destroyed too quickly. 
     void ShowDamageText(float amount)
     {
         if (DamageTextPrefab == null || Camera.main == null)
@@ -227,6 +241,7 @@ public class CharacterForm : MonoBehaviour //TODO: Split into CharacterForm and 
         StartCoroutine(DamageFloatRoutine(obj));
     }
 
+    // TODO: Move out of MonoScripts entirely, probably to a UI Manager. Currently it freezes if the attached object is destroyed too quickly.
     IEnumerator DamageFloatRoutine(GameObject obj)
     {
         Vector3 start = obj.transform.position;
@@ -246,6 +261,8 @@ public class CharacterForm : MonoBehaviour //TODO: Split into CharacterForm and 
         Destroy(obj);
     }
 
+
+    //TODO: Add more cleanup logic and death effects if needed, maybe move this to CombatantScript or a service with a Kill() method
     public void Die()
     {
         Destroy(gameObject);

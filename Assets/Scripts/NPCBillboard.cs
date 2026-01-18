@@ -16,6 +16,8 @@ public class NPCBillboard : MonoBehaviour {
         direction.z = -direction.z;
 
         // Update the rotation of the object to face the player, but remain upright
-        transform.rotation = Quaternion.LookRotation(direction);
+        if (direction != Vector3.zero) {
+            transform.rotation = Quaternion.LookRotation(direction);
+        }
     }
 }
